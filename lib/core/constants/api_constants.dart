@@ -7,5 +7,5 @@ class ApiConstants {
   static const Duration requestTimeout = Duration(seconds: 25);
 
   static const String authLoginPath = '/auth/login';
-  static const String assetsByPersonPath = '/assets/by-person';
+  static const String assetsByPersonPath = '/assets/grouped/by-person';
 }

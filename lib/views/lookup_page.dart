@@ -97,33 +97,40 @@ class _LookupPageState extends State<LookupPage> {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
-                Expanded(
-                  child: Stack(
-                    children: [
-                      TabBarView(
-                        children: [
-                          _NameLookupTab(controller: lookup),
-                          _CodeLookupTab(controller: lookup),
-                        ],
-                      ),
-                      if (lookup.isLoading && !lookup.hasLoaded)
-                        const Center(child: CircularProgressIndicator()),
-                      if (!lookup.isLoading &&
-                          lookup.errorMessage != null &&
-                          !lookup.hasLoaded)
-                        EmptyState(
-                          icon: Icons.cloud_off,
-                          title: 'No se pudo cargar la informacion',
-                          subtitle: lookup.errorMessage!,
-                        ),
-                    ],
-                  ),
-                ),
+                Expanded(child: _LookupBody(lookup: lookup)),
               ],
             ),
           );
         },
       ),
+    );
+  }
+}
+
+class _LookupBody extends StatelessWidget {
+  const _LookupBody({required this.lookup});
+
+  final LookupController lookup;
+
+  @override
+  Widget build(BuildContext context) {
+    if (lookup.isLoading && !lookup.hasLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!lookup.isLoading && lookup.errorMessage != null && !lookup.hasLoaded) {
+      return EmptyState(
+        icon: Icons.cloud_off,
+        title: 'No se pudo cargar la informacion',
+        subtitle: lookup.errorMessage!,
+      );
+    }
+
+    return TabBarView(
+      children: [
+        _NameLookupTab(controller: lookup),
+        _CodeLookupTab(controller: lookup),
+      ],
     );
   }
 }
