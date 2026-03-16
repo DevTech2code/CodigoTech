@@ -1,17 +1,27 @@
-# codigotech
+# CodigoTech
 
-A new Flutter project.
+Aplicacion Flutter para consulta de activos desde un backend desplegado.
 
-## Getting Started
+## Funcionalidades
 
-This project is a starting point for a Flutter application.
+- Inicio de sesion contra el backend remoto.
+- Busqueda de persona a codigos de activos.
+- Busqueda de codigo a nombre de persona.
+- Coincidencia flexible de codigos como `001` -> `lapt-001`.
 
-A few resources to get you started if this is your first Flutter project:
+## Backend consumido
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- URL base: `https://asset-app-back.onrender.com`
+- Login: `POST /auth/login`
+- Consulta principal: `GET /assets/by-person`
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Ejecutar
+
+```bash
+flutter pub get
+flutter run
+```
+
+## Estructura
+
+El proyecto esta organizado con separacion por carpetas para controladores, modelos, repositorios, servicios, vistas y utilidades.
