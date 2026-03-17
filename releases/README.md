@@ -1,14 +1,17 @@
 # Descarga APK - CodigoTech
 
-## Archivo APK
-- CodigoTech-2026-03-17.apk
+## Enlace fijo de descarga (siempre actualizado)
+- https://github.com/DevTech2code/CodigoTech/releases/download/apk-latest/CodigoTech-latest.apk
 
-## Enlace directo de descarga
-- https://github.com/DevTech2code/CodigoTech/blob/main/releases/CodigoTech-2026-03-17.apk?raw=1
+## Como se actualiza automaticamente
+- Cada push a main ejecuta el workflow de GitHub Actions.
+- Ese workflow compila el APK release.
+- Luego reemplaza el archivo de la release con tag apk-latest.
+- El enlace fijo no cambia, solo cambia su contenido.
 
 ## QR de descarga
 - Archivo: CodigoTech-QR-Descarga.png
-- El QR abre el enlace directo para descargar el APK.
+- El QR apunta al enlace fijo de descarga.
 
 ## Nota para Android
 Si el telefono bloquea la instalacion, habilitar temporalmente "Instalar apps desconocidas" para el navegador o app desde la que se descarga.

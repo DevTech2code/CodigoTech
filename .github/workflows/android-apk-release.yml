@@ -1,0 +1,75 @@
+name: Build and Publish Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - lib/**
+      - android/**
+      - pubspec.yaml
+      - pubspec.lock
+      - .github/workflows/android-apk-release.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/CodigoTech-latest.apk
+          sha256sum dist/CodigoTech-latest.apk > dist/CodigoTech-latest.apk.sha256
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CodigoTech-latest-apk
+          path: |
+            dist/CodigoTech-latest.apk
+            dist/CodigoTech-latest.apk.sha256
+
+      - name: Publish GitHub release asset
+        uses: ncipollo/release-action@v1
+        with:
+          tag: apk-latest
+          name: CodigoTech APK Latest
+          body: |
+            Descarga directa del APK:
+            https://github.com/${{ github.repository }}/releases/download/apk-latest/CodigoTech-latest.apk
+
+            Este archivo se actualiza automaticamente con cada push a main.
+          allowUpdates: true
+          replacesArtifacts: true
+          removeArtifacts: true
+          artifacts: |
+            dist/CodigoTech-latest.apk
+            dist/CodigoTech-latest.apk.sha256
+          token: ${{ secrets.GITHUB_TOKEN }}
