@@ -7,10 +7,13 @@ import 'package:codigotech/core/errors/app_exception.dart';
 import 'package:http/http.dart' as http;
 
 class ApiClient {
-  ApiClient({required this.baseUrl, http.Client? client})
-    : _client = client ?? http.Client();
+  ApiClient({required String baseUrl, http.Client? client})
+    : baseUrl = baseUrl.trim(),
+      _baseUri = _parseBaseUri(baseUrl),
+      _client = client ?? http.Client();
 
   final String baseUrl;
+  final Uri _baseUri;
   final http.Client _client;
 
   Future<Map<String, dynamic>> postJson(
@@ -58,7 +61,17 @@ class ApiClient {
   }
 
   Uri _buildUri(String path, {Map<String, String>? queryParams}) {
-    return Uri.parse('$baseUrl$path').replace(queryParameters: queryParams);
+    final trimmedPath = path.trim();
+    final normalizedPath = trimmedPath.startsWith('/')
+        ? trimmedPath.substring(1)
+        : trimmedPath;
+
+    final uri = _baseUri.resolve(normalizedPath);
+    if (queryParams == null || queryParams.isEmpty) {
+      return uri;
+    }
+
+    return uri.replace(queryParameters: queryParams);
   }
 
   Map<String, String> _buildHeaders(String? token) {
@@ -81,7 +94,28 @@ class ApiClient {
       throw AppException('Connection timeout. Please try again.');
     } on SocketException {
       throw AppException('No internet connection available.');
+    } on HandshakeException {
+      throw AppException(
+        'Secure connection failed. Check your internet and device date/time.',
+      );
+    } on http.ClientException catch (error) {
+      throw AppException('Network error: ${error.message}');
+    } on HttpException {
+      throw AppException('Could not reach the server.');
+    } catch (_) {
+      throw AppException('Unexpected network error while contacting server.');
     }
+  }
+
+  static Uri _parseBaseUri(String rawBaseUrl) {
+    final normalized = rawBaseUrl.trim();
+    final parsed = Uri.tryParse(normalized);
+    if (parsed == null || !parsed.hasScheme || !parsed.hasAuthority) {
+      throw AppException(
+        'Invalid API base URL. Set API_BASE_URL using a full URL (for example, https://asset-app-back.onrender.com).',
+      );
+    }
+    return parsed;
   }
 
   dynamic _decodeBody(String body) {

@@ -20,16 +20,22 @@ class AuthRemoteServiceImpl implements AuthRemoteService {
     required String username,
     required String password,
   }) async {
-    final response = await apiClient.postJson(
-      ApiConstants.authLoginPath,
-      body: {'username': username, 'password': password},
-    );
+    try {
+      final response = await apiClient.postJson(
+        ApiConstants.authLoginPath,
+        body: {'username': username, 'password': password},
+      );
 
-    final session = AuthSession.fromLoginResponse(response);
-    if (session.token.isEmpty) {
-      throw AppException('The server did not return a valid token.');
+      final session = AuthSession.fromLoginResponse(response);
+      if (session.token.isEmpty) {
+        throw AppException('The server did not return a valid token.');
+      }
+
+      return session;
+    } on AppException {
+      rethrow;
+    } catch (_) {
+      throw AppException('Unexpected login response format from server.');
     }
-
-    return session;
   }
 }

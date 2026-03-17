@@ -53,8 +53,11 @@ class AuthController extends ChangeNotifier {
     } on AppException catch (error) {
       _errorMessage = error.message;
       return false;
-    } catch (_) {
-      _errorMessage = 'Unexpected error while trying to sign in.';
+    } catch (error, stackTrace) {
+      debugPrint('AuthController.login unexpected error: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      _errorMessage =
+          'Unexpected sign in error. Verify API_BASE_URL and try again.';
       return false;
     } finally {
       _isLoading = false;
