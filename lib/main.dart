@@ -7,9 +7,11 @@ import 'package:codigotech/repositories/auth_repository.dart';
 import 'package:codigotech/services/assets_remote_service.dart';
 import 'package:codigotech/services/auth_remote_service.dart';
 import 'package:codigotech/services/contacts_sheet_service.dart';
+import 'package:codigotech/services/update_checker_service.dart';
 import 'package:codigotech/views/intro_video_splash_page.dart';
 import 'package:codigotech/views/login_page.dart';
 import 'package:codigotech/views/lookup_page.dart';
+import 'package:codigotech/views/widgets/update_available_dialog.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -58,10 +60,12 @@ class CodigoTechApp extends StatefulWidget {
 class _CodigoTechAppState extends State<CodigoTechApp> {
   late final AuthController _authController;
   late final LookupController _lookupController;
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   static const String _introVideoAssetPath =
       'assets/Animación_de_Logo_Tecnológico.mp4';
   bool _introCompleted = false;
+  bool _hasCheckedForUpdates = false;
 
   @override
   void initState() {
@@ -70,6 +74,10 @@ class _CodigoTechAppState extends State<CodigoTechApp> {
     _authController = AuthController(repository: widget.authRepository);
     _lookupController = LookupController(repository: widget.assetsRepository);
     _authController.initialize();
+
+    if (!_showVideoSplashOnPlatform) {
+      _scheduleUpdateCheck();
+    }
   }
 
   @override
@@ -97,6 +105,53 @@ class _CodigoTechAppState extends State<CodigoTechApp> {
     setState(() {
       _introCompleted = true;
     });
+
+    _scheduleUpdateCheck();
+  }
+
+  void _scheduleUpdateCheck() {
+    if (_hasCheckedForUpdates) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _hasCheckedForUpdates) {
+        return;
+      }
+
+      _checkForUpdates();
+    });
+  }
+
+  Future<void> _checkForUpdates() async {
+    _hasCheckedForUpdates = true;
+
+    try {
+      final updateChecker = GitHubUpdateCheckerService();
+      final updateInfo = await updateChecker.checkForUpdate();
+
+      if (!mounted || !updateInfo.hasUpdate) {
+        return;
+      }
+
+      final context = _navigatorKey.currentContext;
+      if (context == null || !context.mounted) {
+        return;
+      }
+
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (_) => UpdateAvailableDialog(
+          latestVersion: updateInfo.latestVersion,
+          currentVersion: updateInfo.currentVersion,
+          downloadUrl: updateInfo.downloadUrl,
+          changelog: updateInfo.changelog,
+        ),
+      );
+    } catch (_) {
+      // Silently fail if update check fails
+    }
   }
 
   Widget _buildAppHome() {
@@ -126,6 +181,7 @@ class _CodigoTechAppState extends State<CodigoTechApp> {
     final showIntro = _showVideoSplashOnPlatform && !_introCompleted;
 
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'CodigoTech',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

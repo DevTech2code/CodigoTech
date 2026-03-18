@@ -1,6 +1,4 @@
 import 'package:codigotech/controllers/auth_controller.dart';
-import 'package:codigotech/services/update_checker_service.dart';
-import 'package:codigotech/views/widgets/update_available_dialog.dart';
 import 'package:flutter/material.dart';
 
 class LoginPage extends StatefulWidget {
@@ -19,42 +17,10 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscureText = true;
 
   @override
-  void initState() {
-    super.initState();
-    _checkForUpdates();
-  }
-
-  @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  Future<void> _checkForUpdates() async {
-    try {
-      final updateChecker = GitHubUpdateCheckerService();
-      final updateInfo = await updateChecker.checkForUpdate();
-
-      if (!mounted || !updateInfo.hasUpdate) {
-        return;
-      }
-
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: true,
-          builder: (_) => UpdateAvailableDialog(
-            latestVersion: updateInfo.latestVersion,
-            currentVersion: updateInfo.currentVersion,
-            downloadUrl: updateInfo.downloadUrl,
-            changelog: updateInfo.changelog,
-          ),
-        );
-      }
-    } catch (_) {
-      // Silently fail if update check fails
-    }
   }
 
   Future<void> _submit() async {
