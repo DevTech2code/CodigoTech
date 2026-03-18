@@ -1,5 +1,6 @@
 import 'package:codigotech/controllers/auth_controller.dart';
 import 'package:codigotech/controllers/lookup_controller.dart';
+import 'package:codigotech/models/contact_entry.dart';
 import 'package:codigotech/models/person_assets_group.dart';
 import 'package:codigotech/views/widgets/empty_state.dart';
 import 'package:flutter/material.dart';
@@ -47,7 +48,7 @@ class _LookupPageState extends State<LookupPage> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: AnimatedBuilder(
         animation: Listenable.merge([
           widget.authController,
@@ -77,6 +78,7 @@ class _LookupPageState extends State<LookupPage> {
                 tabs: [
                   Tab(text: 'Nombre -> Codigo'),
                   Tab(text: 'Codigo -> Nombre'),
+                  Tab(text: 'Nombre -> Numero'),
                 ],
               ),
             ),
@@ -130,6 +132,7 @@ class _LookupBody extends StatelessWidget {
       children: [
         _NameLookupTab(controller: lookup),
         _CodeLookupTab(controller: lookup),
+        _ContactLookupTab(controller: lookup),
       ],
     );
   }
@@ -266,6 +269,84 @@ class _CodeLookupTab extends StatelessWidget {
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ContactLookupTab extends StatelessWidget {
+  const _ContactLookupTab({required this.controller});
+
+  final LookupController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final contactsError = controller.contactsErrorMessage;
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          TextField(
+            onChanged: controller.setContactQuery,
+            decoration: const InputDecoration(
+              labelText: 'Buscar nombre o numero',
+              hintText: 'Ejemplo: Maria o 0999',
+              prefixIcon: Icon(Icons.contact_phone_outlined),
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (contactsError != null && contactsError.trim().isNotEmpty)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                contactsError,
+                style: TextStyle(color: Colors.orange.shade900),
+              ),
+            ),
+          Expanded(
+            child: controller.contactResults.isEmpty
+                ? const EmptyState(
+                    icon: Icons.contact_phone,
+                    title: 'Sin registros',
+                    subtitle:
+                        'No se encontraron filas de nombre y numero en el Excel.',
+                  )
+                : ListView.separated(
+                    itemCount: controller.contactResults.length,
+                    separatorBuilder: (_, index) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final contact = controller.contactResults[index];
+                      return _ContactCard(contact: contact);
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContactCard extends StatelessWidget {
+  const _ContactCard({required this.contact});
+
+  final ContactEntry contact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: const CircleAvatar(
+          child: Icon(Icons.person),
+        ),
+        title: Text(contact.name.isEmpty ? '(Sin nombre)' : contact.name),
+        subtitle: Text(contact.number.isEmpty ? '(Sin numero)' : contact.number),
       ),
     );
   }

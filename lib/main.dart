@@ -6,6 +6,7 @@ import 'package:codigotech/repositories/assets_repository.dart';
 import 'package:codigotech/repositories/auth_repository.dart';
 import 'package:codigotech/services/assets_remote_service.dart';
 import 'package:codigotech/services/auth_remote_service.dart';
+import 'package:codigotech/services/contacts_sheet_service.dart';
 import 'package:codigotech/views/login_page.dart';
 import 'package:codigotech/views/lookup_page.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,7 @@ Future<void> main() async {
 
   final assetsRepository = AssetsRepositoryImpl(
     remoteService: AssetsRemoteServiceImpl(apiClient: apiClient),
+    contactsSheetService: GoogleSheetsContactsService(),
   );
 
   runApp(
