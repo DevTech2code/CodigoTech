@@ -73,6 +73,43 @@ class _IntroVideoSplashPageState extends State<IntroVideoSplashPage> {
     widget.onFinished();
   }
 
+  Widget _buildVideoLayer() {
+    if (_isVideoReady && _controller.value.isInitialized) {
+      final size = _controller.value.size;
+
+      if (size.width > 0 && size.height > 0) {
+        return SizedBox.expand(
+          child: FittedBox(
+            fit: BoxFit.cover,
+            child: SizedBox(
+              width: size.width,
+              height: size.height,
+              child: VideoPlayer(_controller),
+            ),
+          ),
+        );
+      }
+    }
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          _CircularLogoPlaceholder(),
+          SizedBox(height: 16),
+          SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _finishTimer?.cancel();
@@ -95,19 +132,7 @@ class _IntroVideoSplashPageState extends State<IntroVideoSplashPage> {
               ),
             ),
           ),
-          if (_isVideoReady && _controller.value.isInitialized)
-            Center(
-              child: AspectRatio(
-                aspectRatio: _controller.value.aspectRatio,
-                child: VideoPlayer(_controller),
-              ),
-            )
-          else
-            const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
-              ),
-            ),
+          _buildVideoLayer(),
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -148,6 +173,34 @@ class _IntroVideoSplashPageState extends State<IntroVideoSplashPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CircularLogoPlaceholder extends StatelessWidget {
+  const _CircularLogoPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.28),
+            blurRadius: 18,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: Image.asset(
+          'assets/logo.png',
+          width: 132,
+          height: 132,
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }
