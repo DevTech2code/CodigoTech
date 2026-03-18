@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:codigotech/models/update_info.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -16,7 +18,8 @@ class GitHubUpdateCheckerService implements UpdateCheckerService {
   @override
   Future<UpdateInfo> checkForUpdate() async {
     final packageInfo = await PackageInfo.fromPlatform();
-    final currentVersion = packageInfo.version;
+    final currentVersion = packageInfo.version.trim();
+    final currentBuild = _parseBuildNumber(packageInfo.buildNumber);
 
     try {
       final response = await http.get(
@@ -33,15 +36,23 @@ class GitHubUpdateCheckerService implements UpdateCheckerService {
         return UpdateInfo.noUpdate(currentVersion: currentVersion);
       }
 
-      final tagName = '${json['tag_name']}';
-      final latestVersion = _normalizeVersion(tagName);
       final downloadUrl = _extractApkDownloadUrl(json);
-
       if (downloadUrl.isEmpty) {
         return UpdateInfo.noUpdate(currentVersion: currentVersion);
       }
 
-      final hasUpdate = _isNewerVersion(latestVersion, currentVersion);
+      final latestVersion = _extractLatestVersion(json);
+      if (latestVersion.isEmpty) {
+        return UpdateInfo.noUpdate(currentVersion: currentVersion);
+      }
+
+      final latestBuild = _extractLatestBuild(json);
+      final hasUpdate = _isRemoteNewer(
+        latestVersion: latestVersion,
+        latestBuild: latestBuild,
+        currentVersion: currentVersion,
+        currentBuild: currentBuild,
+      );
 
       return UpdateInfo(
         latestVersion: latestVersion,
@@ -57,15 +68,57 @@ class GitHubUpdateCheckerService implements UpdateCheckerService {
 
   dynamic _parseJson(String body) {
     try {
-      // ignore: avoid_dynamic_calls
-      return (const BetterJsonDecoder().convert(body));
+      return jsonDecode(body);
     } catch (_) {
       return null;
     }
   }
 
-  String _normalizeVersion(String version) {
-    return version.replaceAll(RegExp(r'^v'), '').trim();
+  String _extractLatestVersion(Map<String, dynamic> releaseJson) {
+    final candidates = [
+      releaseJson['name'] as String?,
+      releaseJson['body'] as String?,
+      releaseJson['tag_name'] as String?,
+    ];
+
+    for (final candidate in candidates) {
+      final semver = _extractSemver(candidate ?? '');
+      if (semver != null && semver.isNotEmpty) {
+        return semver;
+      }
+    }
+
+    return '';
+  }
+
+  int _extractLatestBuild(Map<String, dynamic> releaseJson) {
+    final candidates = [
+      releaseJson['name'] as String?,
+      releaseJson['body'] as String?,
+    ];
+
+    for (final candidate in candidates) {
+      if (candidate == null || candidate.trim().isEmpty) {
+        continue;
+      }
+
+      final withPlus = RegExp(
+        r'(?<!\d)\d+\.\d+\.\d+\+(\d+)(?!\d)',
+      ).firstMatch(candidate);
+      if (withPlus != null) {
+        return int.tryParse(withPlus.group(1) ?? '') ?? 0;
+      }
+
+      final labeledBuild = RegExp(
+        r'\bbuild\b\s*[:#\-]?\s*(\d+)',
+        caseSensitive: false,
+      ).firstMatch(candidate);
+      if (labeledBuild != null) {
+        return int.tryParse(labeledBuild.group(1) ?? '') ?? 0;
+      }
+    }
+
+    return 0;
   }
 
   String _extractApkDownloadUrl(Map<String, dynamic> releaseJson) {
@@ -88,249 +141,54 @@ class GitHubUpdateCheckerService implements UpdateCheckerService {
     return '';
   }
 
-  bool _isNewerVersion(String latestVersion, String currentVersion) {
-    final latestParts = latestVersion.split('.').map(int.tryParse).toList();
-    final currentParts = currentVersion.split('.').map(int.tryParse).toList();
+  bool _isRemoteNewer({
+    required String latestVersion,
+    required int latestBuild,
+    required String currentVersion,
+    required int currentBuild,
+  }) {
+    final latestParts = _parseSemver(latestVersion);
+    final currentParts = _parseSemver(currentVersion);
 
-    final maxLength = [latestParts.length, currentParts.length].reduce(
-      (a, b) => a > b ? a : b,
-    );
+    if (latestParts == null || currentParts == null) {
+      return false;
+    }
 
-    for (var i = 0; i < maxLength; i++) {
-      final latestPart = latestParts.length > i ? latestParts[i] ?? 0 : 0;
-      final currentPart = currentParts.length > i ? currentParts[i] ?? 0 : 0;
-
-      if (latestPart > currentPart) {
+    for (var i = 0; i < 3; i++) {
+      if (latestParts[i] > currentParts[i]) {
         return true;
       }
 
-      if (latestPart < currentPart) {
+      if (latestParts[i] < currentParts[i]) {
         return false;
       }
     }
 
-    return false;
-  }
-}
-
-class BetterJsonDecoder {
-  const BetterJsonDecoder();
-
-  dynamic convert(String input) {
-    const jsonDecoder = UnicodeDecoder();
-    return jsonDecoder.convert(input);
-  }
-}
-
-class UnicodeDecoder {
-  const UnicodeDecoder();
-
-  dynamic convert(String input) {
-    // Simple JSON parser that handles unicode properly
-    return _parseValue(input, 0).$1;
+    return latestBuild > currentBuild;
   }
 
-  (dynamic, int) _parseValue(String input, int pos) {
-    pos = _skipWhitespace(input, pos);
-
-    if (pos >= input.length) {
-      throw const FormatException('Unexpected end of input');
+  List<int>? _parseSemver(String rawValue) {
+    final semver = _extractSemver(rawValue);
+    if (semver == null) {
+      return null;
     }
 
-    final char = input[pos];
-
-    if (char == '"') {
-      return _parseString(input, pos);
-    } else if (char == '{') {
-      return _parseObject(input, pos);
-    } else if (char == '[') {
-      return _parseArray(input, pos);
-    } else if (char == 't' || char == 'f') {
-      return _parseBoolean(input, pos);
-    } else if (char == 'n') {
-      return _parseNull(input, pos);
-    } else if (char == '-' || (char.codeUnitAt(0) >= 48 && char.codeUnitAt(0) <= 57)) {
-      return _parseNumber(input, pos);
+    final parts = semver.split('.').map(int.tryParse).toList();
+    if (parts.length != 3 || parts.any((part) => part == null)) {
+      return null;
     }
 
-    throw FormatException('Unexpected character: $char', input, pos);
+    return [parts[0]!, parts[1]!, parts[2]!];
   }
 
-  (String, int) _parseString(String input, int pos) {
-    pos++; // skip opening quote
-    final buffer = StringBuffer();
-
-    while (pos < input.length) {
-      final char = input[pos];
-
-      if (char == '"') {
-        return (buffer.toString(), pos + 1);
-      } else if (char == '\\') {
-        pos++;
-        if (pos >= input.length) {
-          throw const FormatException('Unexpected end of string');
-        }
-
-        final escaped = input[pos];
-        switch (escaped) {
-          case '"':
-            buffer.write('"');
-            break;
-          case '\\':
-            buffer.write('\\');
-            break;
-          case '/':
-            buffer.write('/');
-            break;
-          case 'b':
-            buffer.write('\b');
-            break;
-          case 'f':
-            buffer.write('\f');
-            break;
-          case 'n':
-            buffer.write('\n');
-            break;
-          case 'r':
-            buffer.write('\r');
-            break;
-          case 't':
-            buffer.write('\t');
-            break;
-          case 'u':
-            pos++;
-            final hex = input.substring(pos, pos + 4);
-            final codeUnit = int.parse(hex, radix: 16);
-            buffer.writeCharCode(codeUnit);
-            pos += 3;
-            break;
-          default:
-            throw FormatException('Invalid escape sequence: \\$escaped');
-        }
-      } else {
-        buffer.write(char);
-      }
-
-      pos++;
-    }
-
-    throw const FormatException('Unterminated string');
+  String? _extractSemver(String source) {
+    final match = RegExp(
+      r'(?<!\d)v?(\d+\.\d+\.\d+)(?:\+\d+)?(?!\d)',
+    ).firstMatch(source);
+    return match?.group(1);
   }
 
-  (Map<String, dynamic>, int) _parseObject(String input, int pos) {
-    pos++; // skip opening brace
-    final obj = <String, dynamic>{};
-
-    pos = _skipWhitespace(input, pos);
-
-    if (pos < input.length && input[pos] == '}') {
-      return (obj, pos + 1);
-    }
-
-    while (pos < input.length) {
-      pos = _skipWhitespace(input, pos);
-
-      final (key, keyPos) = _parseString(input, pos);
-      pos = keyPos;
-
-      pos = _skipWhitespace(input, pos);
-      if (pos >= input.length || input[pos] != ':') {
-        throw const FormatException('Expected colon');
-      }
-
-      pos = _skipWhitespace(input, pos + 1);
-
-      final (value, valuePos) = _parseValue(input, pos);
-      obj[key] = value;
-      pos = valuePos;
-
-      pos = _skipWhitespace(input, pos);
-
-      if (pos < input.length && input[pos] == ',') {
-        pos = _skipWhitespace(input, pos + 1);
-      } else if (pos < input.length && input[pos] == '}') {
-        return (obj, pos + 1);
-      } else {
-        throw const FormatException('Expected comma or closing brace');
-      }
-    }
-
-    throw const FormatException('Unterminated object');
-  }
-
-  (List<dynamic>, int) _parseArray(String input, int pos) {
-    pos++; // skip opening bracket
-    final array = <dynamic>[];
-
-    pos = _skipWhitespace(input, pos);
-
-    if (pos < input.length && input[pos] == ']') {
-      return (array, pos + 1);
-    }
-
-    while (pos < input.length) {
-      pos = _skipWhitespace(input, pos);
-
-      final (value, valuePos) = _parseValue(input, pos);
-      array.add(value);
-      pos = valuePos;
-
-      pos = _skipWhitespace(input, pos);
-
-      if (pos < input.length && input[pos] == ',') {
-        pos = _skipWhitespace(input, pos + 1);
-      } else if (pos < input.length && input[pos] == ']') {
-        return (array, pos + 1);
-      } else {
-        throw const FormatException('Expected comma or closing bracket');
-      }
-    }
-
-    throw const FormatException('Unterminated array');
-  }
-
-  (bool, int) _parseBoolean(String input, int pos) {
-    if (input.startsWith('true', pos)) {
-      return (true, pos + 4);
-    } else if (input.startsWith('false', pos)) {
-      return (false, pos + 5);
-    }
-
-    throw const FormatException('Invalid boolean');
-  }
-
-  (Null, int) _parseNull(String input, int pos) {
-    if (input.startsWith('null', pos)) {
-      return (null, pos + 4);
-    }
-
-    throw const FormatException('Invalid null');
-  }
-
-  (num, int) _parseNumber(String input, int pos) {
-    final regex = RegExp(r'-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?');
-    final match = regex.matchAsPrefix(input, pos);
-
-    if (match == null) {
-      throw const FormatException('Invalid number');
-    }
-
-    final numberStr = match.group(0) ?? '';
-    final number = num.parse(numberStr);
-
-    return (number, pos + numberStr.length);
-  }
-
-  int _skipWhitespace(String input, int pos) {
-    while (pos < input.length) {
-      final char = input[pos];
-      if (char == ' ' || char == '\t' || char == '\n' || char == '\r') {
-        pos++;
-      } else {
-        break;
-      }
-    }
-
-    return pos;
+  int _parseBuildNumber(String rawBuild) {
+    return int.tryParse(rawBuild.trim()) ?? 0;
   }
 }

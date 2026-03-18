@@ -45,6 +45,21 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
+      - name: Extract app version
+        id: app_version
+        run: |
+          VERSION_LINE=$(grep -m1 '^version:' pubspec.yaml | sed 's/version:[[:space:]]*//')
+          APP_VERSION="$VERSION_LINE"
+          APP_BUILD="0"
+
+          if [[ "$VERSION_LINE" == *"+"* ]]; then
+            APP_VERSION="${VERSION_LINE%%+*}"
+            APP_BUILD="${VERSION_LINE##*+}"
+          fi
+
+          echo "version=$APP_VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$APP_BUILD" >> "$GITHUB_OUTPUT"
+
       - name: Prepare release artifacts
         run: |
           mkdir -p dist
@@ -63,8 +78,11 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: apk-latest
-          name: CodigoTech APK Latest
+          name: CodigoTech APK Latest v${{ steps.app_version.outputs.version }}+${{ steps.app_version.outputs.build }}
           body: |
+            Version: v${{ steps.app_version.outputs.version }}
+            Build: ${{ steps.app_version.outputs.build }}
+
             Descarga directa del APK:
             https://github.com/${{ github.repository }}/releases/download/apk-latest/CodigoTech-latest.apk
 
