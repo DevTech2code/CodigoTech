@@ -38,6 +38,11 @@ class _IntroVideoSplashPageState extends State<IntroVideoSplashPage> {
       await _controller.initialize();
       await _controller.setLooping(true);
       await _controller.setVolume(0);
+      
+      if (!mounted) {
+        return;
+      }
+      
       await _controller.play();
 
       if (!mounted) {
@@ -47,7 +52,8 @@ class _IntroVideoSplashPageState extends State<IntroVideoSplashPage> {
       setState(() {
         _isVideoReady = true;
       });
-    } catch (_) {
+    } catch (error) {
+      debugPrint('IntroVideoSplashPage error: $error');
       if (!mounted) {
         return;
       }
@@ -89,19 +95,23 @@ class _IntroVideoSplashPageState extends State<IntroVideoSplashPage> {
               ),
             ),
           ),
-          if (_isVideoReady)
-            FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: _controller.value.size.width,
-                height: _controller.value.size.height,
+          if (_isVideoReady && _controller.value.isInitialized)
+            Center(
+              child: AspectRatio(
+                aspectRatio: _controller.value.aspectRatio,
                 child: VideoPlayer(_controller),
+              ),
+            )
+          else
+            const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
               ),
             ),
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0x40000000), Color(0x99000000)],
+                colors: [Color(0x00000000), Color(0x66000000)],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
