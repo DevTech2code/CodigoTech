@@ -78,7 +78,7 @@ class _LookupPageState extends State<LookupPage> {
                 tabs: [
                   Tab(text: 'Nombre -> Codigo'),
                   Tab(text: 'Codigo -> Nombre'),
-                  Tab(text: 'Nombre -> Numero'),
+                  //Tab(text: 'Nombre -> Numero'),
                 ],
               ),
             ),

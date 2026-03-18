@@ -37,7 +37,7 @@ class _IntroVideoSplashPageState extends State<IntroVideoSplashPage> {
     try {
       await _controller.initialize();
       await _controller.setLooping(true);
-      await _controller.setVolume(0);
+      await _controller.setVolume(25);
       
       if (!mounted) {
         return;
