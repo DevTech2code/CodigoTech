@@ -7,8 +7,10 @@ import 'package:codigotech/repositories/auth_repository.dart';
 import 'package:codigotech/services/assets_remote_service.dart';
 import 'package:codigotech/services/auth_remote_service.dart';
 import 'package:codigotech/services/contacts_sheet_service.dart';
+import 'package:codigotech/views/intro_video_splash_page.dart';
 import 'package:codigotech/views/login_page.dart';
 import 'package:codigotech/views/lookup_page.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -57,6 +59,10 @@ class _CodigoTechAppState extends State<CodigoTechApp> {
   late final AuthController _authController;
   late final LookupController _lookupController;
 
+  static const String _introVideoAssetPath =
+      'assets/Animación_de_Logo_Tecnológico.mp4';
+  bool _introCompleted = false;
+
   @override
   void initState() {
     super.initState();
@@ -74,8 +80,51 @@ class _CodigoTechAppState extends State<CodigoTechApp> {
     super.dispose();
   }
 
+  bool get _showVideoSplashOnPlatform {
+    if (kIsWeb) {
+      return false;
+    }
+
+    return defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+  }
+
+  void _completeIntro() {
+    if (!mounted || _introCompleted) {
+      return;
+    }
+
+    setState(() {
+      _introCompleted = true;
+    });
+  }
+
+  Widget _buildAppHome() {
+    return AnimatedBuilder(
+      animation: _authController,
+      builder: (context, _) {
+        if (_authController.isBootstrapping) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (_authController.isAuthenticated) {
+          return LookupPage(
+            authController: _authController,
+            lookupController: _lookupController,
+          );
+        }
+
+        return LoginPage(controller: _authController);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final showIntro = _showVideoSplashOnPlatform && !_introCompleted;
+
     return MaterialApp(
       title: 'CodigoTech',
       debugShowCheckedModeBanner: false,
@@ -83,25 +132,13 @@ class _CodigoTechAppState extends State<CodigoTechApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0E5D63)),
         useMaterial3: true,
       ),
-      home: AnimatedBuilder(
-        animation: _authController,
-        builder: (context, _) {
-          if (_authController.isBootstrapping) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-
-          if (_authController.isAuthenticated) {
-            return LookupPage(
-              authController: _authController,
-              lookupController: _lookupController,
-            );
-          }
-
-          return LoginPage(controller: _authController);
-        },
-      ),
+      home: showIntro
+          ? IntroVideoSplashPage(
+              assetPath: _introVideoAssetPath,
+              playDuration: const Duration(seconds: 4),
+              onFinished: _completeIntro,
+            )
+          : _buildAppHome(),
     );
   }
 }
