@@ -29,9 +29,12 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+
     final success = await widget.controller.login(
-      username: _usernameController.text.trim(),
-      password: _passwordController.text,
+      username: username,
+      password: password,
     );
 
     if (success && mounted) {
@@ -126,7 +129,7 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                                 validator: (value) {
-                                  if (value == null || value.isEmpty) {
+                                  if (value == null || value.trim().isEmpty) {
                                     return 'Ingresa tu contrasena';
                                   }
                                   return null;
