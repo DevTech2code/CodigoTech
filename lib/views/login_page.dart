@@ -74,8 +74,18 @@ class _LoginPageState extends State<LoginPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const Icon(Icons.devices_other, size: 40),
-                              const SizedBox(height: 10),
+                              Center(
+                                child: ClipOval(
+                                  child: Image.asset(
+                                    'assets/logo.png',
+                                    width: 76,
+                                    height: 76,
+                                    fit: BoxFit.cover,
+                                    alignment: Alignment.centerLeft,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
                               Text(
                                 'CodigoTech',
                                 style: Theme.of(
