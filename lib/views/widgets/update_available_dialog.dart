@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class UpdateAvailableDialog extends StatefulWidget {
@@ -20,6 +21,9 @@ class UpdateAvailableDialog extends StatefulWidget {
 }
 
 class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
+  static const String _fallbackDownloadUrl =
+      'https://github.com/DevTech2code/CodigoTech/releases/download/apk-latest/CodigoTech-latest.apk';
+
   bool _isOpeningDownload = false;
 
   @override
@@ -91,13 +95,18 @@ class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
     });
 
     try {
-      final uri = Uri.parse(widget.downloadUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
+      final primaryUri = Uri.tryParse(widget.downloadUrl.trim());
+      var opened = false;
 
+      if (primaryUri != null) {
+        opened = await _openDownloadUrl(primaryUri);
+      }
+
+      if (!opened) {
+        opened = await _openDownloadUrl(Uri.parse(_fallbackDownloadUrl));
+      }
+
+      if (opened) {
         if (mounted) {
           navigator.pop();
         }
@@ -107,7 +116,17 @@ class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
 
       if (mounted) {
         messenger.showSnackBar(
-          const SnackBar(content: Text('No se pudo abrir el enlace de descarga.')),
+          SnackBar(
+            content: const Text('No se pudo abrir el enlace de descarga.'),
+            action: SnackBarAction(
+              label: 'Copiar link',
+              onPressed: () {
+                Clipboard.setData(
+                  const ClipboardData(text: _fallbackDownloadUrl),
+                );
+              },
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -123,5 +142,22 @@ class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
         });
       }
     }
+  }
+
+  Future<bool> _openDownloadUrl(Uri uri) async {
+    if (uri.scheme != 'http' && uri.scheme != 'https') {
+      return false;
+    }
+
+    final launchedExternal = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (launchedExternal) {
+      return true;
+    }
+
+    return launchUrl(uri, mode: LaunchMode.platformDefault);
   }
 }
