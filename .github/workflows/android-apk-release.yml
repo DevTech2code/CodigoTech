@@ -22,6 +22,10 @@ jobs:
   build-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      CI_KEY_ALIAS: codigotech
+      CI_KEYSTORE_PATH: android/ci-signing/codigotech-upload.jks
+      CI_KEYSTORE_PASSWORD_FILE: android/ci-signing/keystore.password
 
     steps:
       - name: Checkout repository
@@ -41,6 +45,42 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Restore CI signing keystore
+        uses: actions/cache@v4
+        with:
+          path: android/ci-signing
+          key: codigotech-ci-signing-v1
+
+      - name: Prepare CI signing files
+        shell: bash
+        run: |
+          mkdir -p android/ci-signing
+
+          if [ ! -f "$CI_KEYSTORE_PASSWORD_FILE" ]; then
+            openssl rand -hex 24 > "$CI_KEYSTORE_PASSWORD_FILE"
+          fi
+
+          KEY_PASS=$(cat "$CI_KEYSTORE_PASSWORD_FILE")
+
+          if [ ! -f "$CI_KEYSTORE_PATH" ]; then
+            keytool -genkeypair -v \
+              -keystore "$CI_KEYSTORE_PATH" \
+              -alias "$CI_KEY_ALIAS" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass "$KEY_PASS" \
+              -keypass "$KEY_PASS" \
+              -dname "CN=CodigoTech, OU=Mobile, O=CodigoTech, L=Santo Domingo, S=Distrito Nacional, C=DO"
+          fi
+
+          cat > android/key.properties <<EOF
+          storePassword=$KEY_PASS
+          keyPassword=$KEY_PASS
+          keyAlias=$CI_KEY_ALIAS
+          storeFile=ci-signing/codigotech-upload.jks
+          EOF
 
       - name: Build release APK
         run: flutter build apk --release
