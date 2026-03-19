@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:codigotech/services/apk_download_service.dart';
 
 class UpdateAvailableDialog extends StatefulWidget {
   const UpdateAvailableDialog({
@@ -24,7 +24,12 @@ class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
   static const String _fallbackDownloadUrl =
       'https://github.com/DevTech2code/CodigoTech/releases/download/apk-latest/CodigoTech-latest.apk';
 
+  // Prevent repeated launches for the same update in the current app session.
+  static final Set<String> _startedDownloadSignatures = <String>{};
+  final ApkDownloadService _apkDownloadService = createApkDownloadService();
+
   bool _isOpeningDownload = false;
+  double? _downloadProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +64,12 @@ class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
+            if (_isOpeningDownload) ...[
+              const SizedBox(height: 14),
+              LinearProgressIndicator(
+                value: _downloadProgress,
+              ),
+            ],
           ],
         ),
       ),
@@ -76,7 +87,7 @@ class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.download),
-          label: Text(_isOpeningDownload ? 'Abriendo...' : 'Descargar'),
+          label: Text(_isOpeningDownload ? _buildDownloadButtonLabel() : 'Descargar'),
         ),
       ],
     );
@@ -89,25 +100,42 @@ class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
 
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    final signature = '${widget.latestVersion.trim()}|${widget.downloadUrl.trim()}';
+    if (_startedDownloadSignatures.contains(signature)) {
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('La descarga de esta version ya fue iniciada.'),
+          ),
+        );
+        navigator.pop();
+      }
+      return;
+    }
 
     setState(() {
       _isOpeningDownload = true;
+      _downloadProgress = 0;
     });
 
+    _startedDownloadSignatures.add(signature);
+
     try {
-      final primaryUri = Uri.tryParse(widget.downloadUrl.trim());
-      final fallbackUri = Uri.parse(_fallbackDownloadUrl);
-      var opened = false;
+      final result = await _apkDownloadService.downloadAndOpenInstaller(
+        downloadUrl: widget.downloadUrl,
+        versionLabel: widget.latestVersion,
+        onProgress: (progress) {
+          if (!mounted) {
+            return;
+          }
 
-      if (primaryUri != null) {
-        opened = await _openDownloadUrl(primaryUri);
-      }
+          setState(() {
+            _downloadProgress = progress.clamp(0.0, 1.0);
+          });
+        },
+      );
 
-      if (!opened && primaryUri?.toString() != fallbackUri.toString()) {
-        opened = await _openDownloadUrl(fallbackUri);
-      }
-
-      if (opened) {
+      if (result.success) {
         if (mounted) {
           navigator.pop();
         }
@@ -115,10 +143,12 @@ class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
         return;
       }
 
+      _startedDownloadSignatures.remove(signature);
+
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content: const Text('No se pudo abrir el enlace de descarga.'),
+            content: Text(result.message),
             action: SnackBarAction(
               label: 'Copiar link',
               onPressed: () {
@@ -131,6 +161,7 @@ class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
         );
       }
     } catch (e) {
+      _startedDownloadSignatures.remove(signature);
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(content: Text('Error abriendo link: $e')),
@@ -140,19 +171,19 @@ class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
       if (mounted) {
         setState(() {
           _isOpeningDownload = false;
+          _downloadProgress = null;
         });
       }
     }
   }
 
-  Future<bool> _openDownloadUrl(Uri uri) async {
-    if (uri.scheme != 'http' && uri.scheme != 'https') {
-      return false;
+  String _buildDownloadButtonLabel() {
+    final progress = _downloadProgress;
+    if (progress == null) {
+      return 'Descargando...';
     }
 
-    return launchUrl(
-      uri,
-      mode: LaunchMode.externalApplication,
-    );
+    final percent = (progress * 100).round();
+    return 'Descargando $percent%';
   }
 }
