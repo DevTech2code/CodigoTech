@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:codigotech/controllers/auth_controller.dart';
 import 'package:codigotech/controllers/lookup_controller.dart';
 import 'package:codigotech/core/constants/api_constants.dart';
@@ -21,6 +23,7 @@ Future<void> main() async {
 
   final prefs = await SharedPreferences.getInstance();
   final apiClient = ApiClient(baseUrl: ApiConstants.baseUrl);
+  unawaited(apiClient.warmUp());
 
   final authRepository = AuthRepositoryImpl(
     remoteService: AuthRemoteServiceImpl(apiClient: apiClient),

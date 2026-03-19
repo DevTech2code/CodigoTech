@@ -12,6 +12,8 @@ class ApiClient {
       _baseUri = _parseBaseUri(baseUrl),
       _client = client ?? http.Client();
 
+  static const int _maxRequestAttempts = 3;
+
   final String baseUrl;
   final Uri _baseUri;
   final http.Client _client;
@@ -22,7 +24,7 @@ class ApiClient {
     String? token,
   }) async {
     final response = await _send(
-      _client.post(
+      () => _client.post(
         _buildUri(path),
         headers: _buildHeaders(token),
         body: jsonEncode(body),
@@ -47,7 +49,7 @@ class ApiClient {
     Map<String, String>? queryParams,
   }) async {
     final response = await _send(
-      _client.get(
+      () => _client.get(
         _buildUri(path, queryParams: queryParams),
         headers: _buildHeaders(token),
       ),
@@ -87,24 +89,82 @@ class ApiClient {
     return headers;
   }
 
-  Future<http.Response> _send(Future<http.Response> request) async {
+  Future<void> warmUp() async {
     try {
-      return await request.timeout(ApiConstants.requestTimeout);
-    } on TimeoutException {
-      throw AppException('Connection timeout. Please try again.');
-    } on SocketException {
-      throw AppException('No internet connection available.');
-    } on HandshakeException {
-      throw AppException(
-        'Secure connection failed. Check your internet and device date/time.',
-      );
-    } on http.ClientException catch (error) {
-      throw AppException('Network error: ${error.message}');
-    } on HttpException {
-      throw AppException('Could not reach the server.');
+      await _send(() => _client.get(_buildUri('/'), headers: _buildHeaders(null)));
     } catch (_) {
-      throw AppException('Unexpected network error while contacting server.');
+      // Warm-up is best effort only.
     }
+  }
+
+  Future<http.Response> _send(Future<http.Response> Function() request) async {
+    for (var attempt = 1; attempt <= _maxRequestAttempts; attempt++) {
+      try {
+        final response = await request().timeout(ApiConstants.requestTimeout);
+
+        if (_shouldRetryStatusCode(response.statusCode) &&
+            attempt < _maxRequestAttempts) {
+          await Future.delayed(_retryDelay(attempt));
+          continue;
+        }
+
+        return response;
+      } on TimeoutException {
+        if (attempt < _maxRequestAttempts) {
+          await Future.delayed(_retryDelay(attempt));
+          continue;
+        }
+
+        throw AppException(
+          'Server is taking too long to respond. Please try again in a few seconds.',
+        );
+      } on SocketException {
+        if (attempt < _maxRequestAttempts) {
+          await Future.delayed(_retryDelay(attempt));
+          continue;
+        }
+
+        throw AppException(
+          'No internet connection or server is waking up. Please try again.',
+        );
+      } on HandshakeException {
+        throw AppException(
+          'Secure connection failed. Check your internet and device date/time.',
+        );
+      } on http.ClientException catch (error) {
+        if (attempt < _maxRequestAttempts) {
+          await Future.delayed(_retryDelay(attempt));
+          continue;
+        }
+
+        throw AppException('Network error: ${error.message}');
+      } on HttpException {
+        if (attempt < _maxRequestAttempts) {
+          await Future.delayed(_retryDelay(attempt));
+          continue;
+        }
+
+        throw AppException('Could not reach the server.');
+      } catch (_) {
+        throw AppException('Unexpected network error while contacting server.');
+      }
+    }
+
+    throw AppException('Network request failed after multiple attempts.');
+  }
+
+  bool _shouldRetryStatusCode(int statusCode) {
+    return statusCode == 408 ||
+        statusCode == 425 ||
+        statusCode == 429 ||
+        statusCode == 500 ||
+        statusCode == 502 ||
+        statusCode == 503 ||
+        statusCode == 504;
+  }
+
+  Duration _retryDelay(int attempt) {
+    return Duration(milliseconds: 700 * attempt);
   }
 
   static Uri _parseBaseUri(String rawBaseUrl) {
