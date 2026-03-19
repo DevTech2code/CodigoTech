@@ -96,14 +96,15 @@ class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
 
     try {
       final primaryUri = Uri.tryParse(widget.downloadUrl.trim());
+      final fallbackUri = Uri.parse(_fallbackDownloadUrl);
       var opened = false;
 
       if (primaryUri != null) {
         opened = await _openDownloadUrl(primaryUri);
       }
 
-      if (!opened) {
-        opened = await _openDownloadUrl(Uri.parse(_fallbackDownloadUrl));
+      if (!opened && primaryUri?.toString() != fallbackUri.toString()) {
+        opened = await _openDownloadUrl(fallbackUri);
       }
 
       if (opened) {
@@ -149,15 +150,9 @@ class _UpdateAvailableDialogState extends State<UpdateAvailableDialog> {
       return false;
     }
 
-    final launchedExternal = await launchUrl(
+    return launchUrl(
       uri,
       mode: LaunchMode.externalApplication,
     );
-
-    if (launchedExternal) {
-      return true;
-    }
-
-    return launchUrl(uri, mode: LaunchMode.platformDefault);
   }
 }

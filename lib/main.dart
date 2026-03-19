@@ -4,6 +4,7 @@ import 'package:codigotech/controllers/auth_controller.dart';
 import 'package:codigotech/controllers/lookup_controller.dart';
 import 'package:codigotech/core/constants/api_constants.dart';
 import 'package:codigotech/core/network/api_client.dart';
+import 'package:codigotech/models/update_info.dart';
 import 'package:codigotech/repositories/assets_repository.dart';
 import 'package:codigotech/repositories/auth_repository.dart';
 import 'package:codigotech/services/assets_remote_service.dart';
@@ -40,6 +41,7 @@ Future<void> main() async {
       apiClient: apiClient,
       authRepository: authRepository,
       assetsRepository: assetsRepository,
+      sharedPreferences: prefs,
     ),
   );
 }
@@ -50,11 +52,13 @@ class CodigoTechApp extends StatefulWidget {
     required this.apiClient,
     required this.authRepository,
     required this.assetsRepository,
+    required this.sharedPreferences,
   });
 
   final ApiClient apiClient;
   final AuthRepository authRepository;
   final AssetsRepository assetsRepository;
+  final SharedPreferences sharedPreferences;
 
   @override
   State<CodigoTechApp> createState() => _CodigoTechAppState();
@@ -67,8 +71,13 @@ class _CodigoTechAppState extends State<CodigoTechApp> {
 
   static const String _introVideoAssetPath =
       'assets/Animación_de_Logo_Tecnológico.mp4';
+    static const String _lastPromptedUpdateSignatureKey =
+      'last_prompted_update_signature';
+
   bool _introCompleted = false;
   bool _hasCheckedForUpdates = false;
+    bool _isCheckingForUpdates = false;
+    bool _isUpdateDialogVisible = false;
 
   @override
   void initState() {
@@ -113,21 +122,26 @@ class _CodigoTechAppState extends State<CodigoTechApp> {
   }
 
   void _scheduleUpdateCheck() {
-    if (_hasCheckedForUpdates) {
+    if (_hasCheckedForUpdates || _isCheckingForUpdates) {
       return;
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _hasCheckedForUpdates) {
+      if (!mounted || _hasCheckedForUpdates || _isCheckingForUpdates) {
         return;
       }
 
-      _checkForUpdates();
+      unawaited(_checkForUpdates());
     });
   }
 
   Future<void> _checkForUpdates() async {
+    if (_hasCheckedForUpdates || _isCheckingForUpdates) {
+      return;
+    }
+
     _hasCheckedForUpdates = true;
+    _isCheckingForUpdates = true;
 
     try {
       final updateChecker = GitHubUpdateCheckerService();
@@ -137,10 +151,18 @@ class _CodigoTechAppState extends State<CodigoTechApp> {
         return;
       }
 
+      final updateSignature = _buildUpdateSignature(updateInfo);
+      if (_isUpdateDialogVisible || _wasUpdatePromptShown(updateSignature)) {
+        return;
+      }
+
       final context = _navigatorKey.currentContext;
       if (context == null || !context.mounted) {
         return;
       }
+
+      _isUpdateDialogVisible = true;
+      unawaited(_markUpdatePromptShown(updateSignature));
 
       await showDialog<void>(
         context: context,
@@ -154,7 +176,37 @@ class _CodigoTechAppState extends State<CodigoTechApp> {
       );
     } catch (_) {
       // Silently fail if update check fails
+    } finally {
+      _isCheckingForUpdates = false;
+      _isUpdateDialogVisible = false;
     }
+  }
+
+  String _buildUpdateSignature(UpdateInfo updateInfo) {
+    final version = updateInfo.latestVersion.trim();
+    final url = updateInfo.downloadUrl.trim();
+    return '$version|$url';
+  }
+
+  bool _wasUpdatePromptShown(String signature) {
+    if (signature.trim().isEmpty) {
+      return false;
+    }
+
+    return
+        widget.sharedPreferences.getString(_lastPromptedUpdateSignatureKey) ==
+        signature;
+  }
+
+  Future<void> _markUpdatePromptShown(String signature) async {
+    if (signature.trim().isEmpty) {
+      return;
+    }
+
+    await widget.sharedPreferences.setString(
+      _lastPromptedUpdateSignatureKey,
+      signature,
+    );
   }
 
   Widget _buildAppHome() {
