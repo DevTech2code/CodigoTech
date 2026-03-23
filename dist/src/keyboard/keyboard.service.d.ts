@@ -1,0 +1,82 @@
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateKeyboardDto } from './dto/create-keyboard.dto';
+import { UpdateKeyboardDto } from './dto/update-keyboard.dto';
+export declare class KeyboardService {
+    private readonly prisma;
+    constructor(prisma: PrismaService);
+    create(dto: CreateKeyboardDto): Promise<{
+        id: number;
+        createdAt: Date;
+        updatedAt: Date;
+        brand: string;
+        model: string;
+        purchaseDate: Date | null;
+        notes: string | null;
+        color: string | null;
+        usageDate: Date | null;
+        connectionType: string | null;
+        layout: string | null;
+        language: string | null;
+        isNumeric: boolean;
+    }>;
+    findAll(): Promise<{
+        id: number;
+        createdAt: Date;
+        updatedAt: Date;
+        brand: string;
+        model: string;
+        purchaseDate: Date | null;
+        notes: string | null;
+        color: string | null;
+        usageDate: Date | null;
+        connectionType: string | null;
+        layout: string | null;
+        language: string | null;
+        isNumeric: boolean;
+    }[]>;
+    findOne(id: number): Promise<{
+        id: number;
+        createdAt: Date;
+        updatedAt: Date;
+        brand: string;
+        model: string;
+        purchaseDate: Date | null;
+        notes: string | null;
+        color: string | null;
+        usageDate: Date | null;
+        connectionType: string | null;
+        layout: string | null;
+        language: string | null;
+        isNumeric: boolean;
+    }>;
+    update(id: number, dto: UpdateKeyboardDto): Promise<{
+        id: number;
+        createdAt: Date;
+        updatedAt: Date;
+        brand: string;
+        model: string;
+        purchaseDate: Date | null;
+        notes: string | null;
+        color: string | null;
+        usageDate: Date | null;
+        connectionType: string | null;
+        layout: string | null;
+        language: string | null;
+        isNumeric: boolean;
+    }>;
+    remove(id: number): Promise<{
+        id: number;
+        createdAt: Date;
+        updatedAt: Date;
+        brand: string;
+        model: string;
+        purchaseDate: Date | null;
+        notes: string | null;
+        color: string | null;
+        usageDate: Date | null;
+        connectionType: string | null;
+        layout: string | null;
+        language: string | null;
+        isNumeric: boolean;
+    }>;
+}
