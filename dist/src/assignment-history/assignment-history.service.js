@@ -22,7 +22,8 @@ let AssignmentHistoryService = class AssignmentHistoryService {
             const asset = await this.prisma.asset.findUnique({ where: { id: data.assetId } });
             if (!asset)
                 throw new common_1.NotFoundException(`Activo con ID ${data.assetId} no encontrado`);
-            if (asset.status !== 'available') {
+            const assignableStatuses = ['available', 'assigned'];
+            if (!assignableStatuses.includes(asset.status)) {
                 throw new common_1.BadRequestException('El activo no está disponible para asignación');
             }
             const person = await this.prisma.person.findUnique({ where: { id: data.personId } });
@@ -31,7 +32,14 @@ let AssignmentHistoryService = class AssignmentHistoryService {
             const resolvedBranchId = data.branchId !== undefined && data.branchId !== null
                 ? data.branchId
                 : asset.branchId ?? person.branchId ?? undefined;
-            const assignmentData = { ...data, branchId: resolvedBranchId };
+            const isReassignment = asset.status === 'assigned';
+            const reassignmentNote = isReassignment
+                ? '⚠ REASIGNACION/COMPARTIDO: este equipo ya tenia una asignacion activa previa.'
+                : '';
+            const deliveryNotes = data.deliveryNotes
+                ? `${data.deliveryNotes}${reassignmentNote ? `\n${reassignmentNote}` : ''}`
+                : (reassignmentNote || undefined);
+            const assignmentData = { ...data, branchId: resolvedBranchId, deliveryNotes };
             const result = await this.prisma.$transaction([
                 this.prisma.assignmentHistory.create({
                     data: assignmentData,
@@ -41,7 +49,7 @@ let AssignmentHistoryService = class AssignmentHistoryService {
                     where: { id: data.assetId },
                     data: {
                         status: 'assigned',
-                        assignedPersonId: data.personId,
+                        assignedPersonId: asset.assignedPersonId ?? data.personId,
                         branchId: resolvedBranchId ?? asset.branchId,
                         deliveryDate: data.assignmentDate ? new Date(data.assignmentDate) : new Date(),
                         receivedDate: null,
