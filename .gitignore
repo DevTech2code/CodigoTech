@@ -118,3 +118,4 @@ app.*.map.json
 # Nested repositories / local temp clones
 /asset-app-back/
 /.temp_repo_inspect/
+node_modules

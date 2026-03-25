@@ -1,0 +1,82 @@
+import { PrismaService } from '../prisma/prisma.service';
+import { CreatePowerStripDto } from './dto/create-power-strip.dto';
+import { UpdatePowerStripDto } from './dto/update-power-strip.dto';
+export declare class PowerStripService {
+    private prisma;
+    constructor(prisma: PrismaService);
+    create(data: CreatePowerStripDto): Promise<{
+        id: number;
+        createdAt: Date;
+        updatedAt: Date;
+        brand: string | null;
+        model: string;
+        purchasePrice: number | null;
+        purchaseDate: Date | null;
+        notes: string | null;
+        color: string | null;
+        usageDate: Date | null;
+        lengthMeters: import("@prisma/client/runtime/library").Decimal | null;
+        outletCount: number | null;
+        capacity: number | null;
+    }>;
+    findAll(): Promise<{
+        id: number;
+        createdAt: Date;
+        updatedAt: Date;
+        brand: string | null;
+        model: string;
+        purchasePrice: number | null;
+        purchaseDate: Date | null;
+        notes: string | null;
+        color: string | null;
+        usageDate: Date | null;
+        lengthMeters: import("@prisma/client/runtime/library").Decimal | null;
+        outletCount: number | null;
+        capacity: number | null;
+    }[]>;
+    findOne(id: number): Promise<{
+        id: number;
+        createdAt: Date;
+        updatedAt: Date;
+        brand: string | null;
+        model: string;
+        purchasePrice: number | null;
+        purchaseDate: Date | null;
+        notes: string | null;
+        color: string | null;
+        usageDate: Date | null;
+        lengthMeters: import("@prisma/client/runtime/library").Decimal | null;
+        outletCount: number | null;
+        capacity: number | null;
+    }>;
+    update(id: number, data: UpdatePowerStripDto): Promise<{
+        id: number;
+        createdAt: Date;
+        updatedAt: Date;
+        brand: string | null;
+        model: string;
+        purchasePrice: number | null;
+        purchaseDate: Date | null;
+        notes: string | null;
+        color: string | null;
+        usageDate: Date | null;
+        lengthMeters: import("@prisma/client/runtime/library").Decimal | null;
+        outletCount: number | null;
+        capacity: number | null;
+    }>;
+    remove(id: number): Promise<{
+        id: number;
+        createdAt: Date;
+        updatedAt: Date;
+        brand: string | null;
+        model: string;
+        purchasePrice: number | null;
+        purchaseDate: Date | null;
+        notes: string | null;
+        color: string | null;
+        usageDate: Date | null;
+        lengthMeters: import("@prisma/client/runtime/library").Decimal | null;
+        outletCount: number | null;
+        capacity: number | null;
+    }>;
+}
