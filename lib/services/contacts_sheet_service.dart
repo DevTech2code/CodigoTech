@@ -29,10 +29,27 @@ class GoogleSheetsContactsService implements ContactsSheetService {
     'numero',
     'numero de telefono',
     'telefono',
+    'numero celular',
     'celular',
     'movil',
     'phone',
     'number',
+  };
+
+  static const Set<String> _number2Headers = {
+    'numero celular 2',
+    'numero 2',
+    'celular 2',
+    'telefono 2',
+    'numero secundario',
+  };
+
+  static const Set<String> _ipPhoneHeaders = {
+    'telefonia ip',
+    'telefono ip',
+    'ip',
+    'anexo',
+    'extension',
   };
 
   @override
@@ -63,10 +80,15 @@ class GoogleSheetsContactsService implements ContactsSheetService {
     final headerRow = rows.first.map((cell) => '$cell').toList(growable: false);
     final nameIndex = _findColumnIndex(headerRow, _nameHeaders);
     final numberIndex = _findColumnIndex(headerRow, _numberHeaders);
+    final number2Index = _findColumnIndex(headerRow, _number2Headers);
+    final ipPhoneIndex = _findColumnIndex(headerRow, _ipPhoneHeaders);
 
-    if (nameIndex == -1 || numberIndex == -1) {
+    final hasAtLeastOneContactColumn =
+        numberIndex != -1 || number2Index != -1 || ipPhoneIndex != -1;
+
+    if (nameIndex == -1 || !hasAtLeastOneContactColumn) {
       throw AppException(
-        'No se encontraron columnas de nombre y numero en el Excel. Encabezados esperados: Nombre y Numero.',
+        'No se encontraron columnas validas en el Excel. Encabezados esperados: Nombre y al menos una de estas columnas: Numero, Numero Celular 2 o Telefonia IP.',
       );
     }
 
@@ -78,11 +100,20 @@ class GoogleSheetsContactsService implements ContactsSheetService {
 
       final name = _readCell(row, nameIndex).trim();
       final number = _readCell(row, numberIndex).trim();
-      if (name.isEmpty && number.isEmpty) {
+      final number2 = _readCell(row, number2Index).trim();
+      final ipPhone = _readCell(row, ipPhoneIndex).trim();
+      if (name.isEmpty && number.isEmpty && number2.isEmpty && ipPhone.isEmpty) {
         continue;
       }
 
-      contacts.add(ContactEntry(name: name, number: number));
+      contacts.add(
+        ContactEntry(
+          name: name,
+          number: number,
+          number2: number2,
+          ipPhone: ipPhone,
+        ),
+      );
     }
 
     return contacts;

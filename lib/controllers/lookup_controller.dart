@@ -169,6 +169,7 @@ class LookupController extends ChangeNotifier {
 
   void _applyContactFilter() {
     final query = _contactQuery.trim().toLowerCase();
+    final normalizedQuery = _normalizePhoneLike(query);
 
     if (query.isEmpty) {
       _contactResults = _contacts;
@@ -179,8 +180,31 @@ class LookupController extends ChangeNotifier {
         .where((entry) {
           final byName = entry.name.toLowerCase().contains(query);
           final byNumber = entry.number.toLowerCase().contains(query);
-          return byName || byNumber;
+          final byNumber2 = entry.number2.toLowerCase().contains(query);
+          final byIpPhone = entry.ipPhone.toLowerCase().contains(query);
+
+          final byNormalizedNumber =
+              normalizedQuery.isNotEmpty &&
+              _normalizePhoneLike(entry.number).contains(normalizedQuery);
+          final byNormalizedNumber2 =
+              normalizedQuery.isNotEmpty &&
+              _normalizePhoneLike(entry.number2).contains(normalizedQuery);
+          final byNormalizedIpPhone =
+              normalizedQuery.isNotEmpty &&
+              _normalizePhoneLike(entry.ipPhone).contains(normalizedQuery);
+
+          return byName ||
+              byNumber ||
+              byNumber2 ||
+              byIpPhone ||
+              byNormalizedNumber ||
+              byNormalizedNumber2 ||
+              byNormalizedIpPhone;
         })
         .toList(growable: false);
+  }
+
+  String _normalizePhoneLike(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 }

@@ -290,8 +290,8 @@ class _ContactLookupTab extends StatelessWidget {
           TextField(
             onChanged: controller.setContactQuery,
             decoration: const InputDecoration(
-              labelText: 'Buscar nombre o numero',
-              hintText: 'Ejemplo: Maria o 0999',
+              labelText: 'Buscar nombre, numero o IP',
+              hintText: 'Ejemplo: Maria, 0999 o 134',
               prefixIcon: Icon(Icons.contact_phone_outlined),
             ),
           ),
@@ -316,7 +316,7 @@ class _ContactLookupTab extends StatelessWidget {
                     icon: Icons.contact_phone,
                     title: 'Sin registros',
                     subtitle:
-                        'No se encontraron filas de nombre y numero en el Excel.',
+                        'No se encontraron filas de contactos en el Excel.',
                   )
                 : ListView.separated(
                     itemCount: controller.contactResults.length,
@@ -340,13 +340,27 @@ class _ContactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final details = <String>[];
+
+    if (contact.number.isNotEmpty) {
+      details.add('Numero: ${contact.number}');
+    }
+    if (contact.number2.isNotEmpty) {
+      details.add('Numero 2: ${contact.number2}');
+    }
+    if (contact.ipPhone.isNotEmpty) {
+      details.add('Telefonia IP: ${contact.ipPhone}');
+    }
+
+    final subtitle = details.isEmpty ? '(Sin contacto)' : details.join('\n');
+
     return Card(
       child: ListTile(
         leading: const CircleAvatar(
           child: Icon(Icons.person),
         ),
         title: Text(contact.name.isEmpty ? '(Sin nombre)' : contact.name),
-        subtitle: Text(contact.number.isEmpty ? '(Sin numero)' : contact.number),
+        subtitle: Text(subtitle),
       ),
     );
   }
