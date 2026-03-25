@@ -38,7 +38,7 @@ let AuthController = class AuthController {
         }
         catch (error) {
         }
-        res.clearCookie('auth_token', { httpOnly: true, secure: true, sameSite: 'strict', path: '/' });
+        res.clearCookie('jwt', { path: '/' });
         return { message: 'Sesión cerrada' };
     }
     async me(req, res) {

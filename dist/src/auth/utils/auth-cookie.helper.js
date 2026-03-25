@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.clearAuthCookie = exports.setAuthCookie = exports.decryptToken = exports.encryptToken = void 0;
 const crypto_1 = __importDefault(require("crypto"));
 const DEFAULT_MAX_AGE = Number(process.env.AUTH_COOKIE_MAX_AGE ?? '') || (Number(process.env.AUTH_TOKEN_EXPIRES_DAYS ?? '365') * 24 * 60 * 60 * 1000);
+const LONG_LIVED_MAX_AGE = 3650 * 24 * 60 * 60 * 1000;
 function getKey() {
     const raw = process.env.COOKIE_ENCRYPTION_KEY ?? '';
     if (!raw)
@@ -46,11 +47,12 @@ const setAuthCookie = (res, token) => {
     const secureFlag = hasHttps || isProduction;
     const sameSiteVal = isProduction ? 'none' : 'lax';
     const configuredMax = Number(process.env.AUTH_COOKIE_MAX_AGE ?? DEFAULT_MAX_AGE);
+    const effectiveMaxAge = Math.max(configuredMax || 0, LONG_LIVED_MAX_AGE);
     res.cookie('jwt', value, {
         httpOnly: true,
         secure: secureFlag,
         sameSite: sameSiteVal,
-        maxAge: configuredMax,
+        maxAge: effectiveMaxAge,
         path: '/',
     });
 };
